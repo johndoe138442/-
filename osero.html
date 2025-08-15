@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2人用オセロ（リバーシ）</title>
+  <style>
+    :root { --green:#2f7d32; --dark:#0f4d0f; --light:#e6e6e6;}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+         margin:0; background:#f7f7f7; color:#222; display:flex; flex-direction:column; align-items:center;}
+    h1{font-size:20px; margin:16px 0 6px;}
+    .info{margin:4px 0 10px; text-align:center; line-height:1.4}
+    .board{
+      display:grid;
+      grid-template-columns:repeat(8,1fr);
+      grid-template-rows:repeat(8,1fr);
+      width:min(92vmin,560px); height:min(92vmin,560px);
+      background:var(--green); border:8px solid var(--dark); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.15);
+      touch-action:manipulation; user-select:none;
+    }
+    .cell{
+      position:relative; border:1px solid rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center;
+    }
+    .disc{
+      width:70%; height:70%; border-radius:50%; box-shadow:inset 0 1px 4px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.25);
+      transition:transform .12s ease;
+    }
+    .black{ background:#111; }
+    .white{ background:#fafafa; }
+    .hint::after{
+      content:""; width:18%; height:18%; border-radius:50%; background:rgba(255,255,255,.55);
+      box-shadow:0 0 0 2px rgba(0,0,0,.2) inset;
+    }
+    .panel{display:flex; gap:10px; align-items:center; margin:12px 0;}
+    .badge{padding:6px 10px; border-radius:999px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.12); font-size:14px;}
+    .turn{font-weight:bold}
+    button{appearance:none; border:none; background:#111; color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; cursor:pointer;}
+    button:hover{opacity:.9}
+    .footer{font-size:12px; color:#555; margin:6px 0 16px;}
+  </style>
+</head>
+<body>
+  <h1>2人用オセロ</h1>
+  <div class="panel">
+    <span class="badge">手番: <span id="turn" class="turn">●黒</span></span>
+    <span class="bad
