@@ -1,37 +1,203 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>クリックゲーム</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2人用オセロ（リバーシ）</title>
   <style>
-    body { text-align: center; font-family: sans-serif; margin-top: 50px; }
-    button { padding: 20px; font-size: 20px; }
-    #score { font-size: 24px; margin-top: 20px; }
+    :root { --green:#2f7d32; --dark:#0f4d0f; --light:#e6e6e6;}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+         margin:0; background:#f7f7f7; color:#222; display:flex; flex-direction:column; align-items:center;}
+    h1{font-size:20px; margin:16px 0 6px;}
+    .info{margin:4px 0 10px; text-align:center; line-height:1.4}
+    .board{
+      display:grid;
+      grid-template-columns:repeat(8,1fr);
+      grid-template-rows:repeat(8,1fr);
+      width:min(92vmin,560px); height:min(92vmin,560px);
+      background:var(--green); border:8px solid var(--dark); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.15);
+      touch-action:manipulation; user-select:none;
+    }
+    .cell{
+      position:relative; border:1px solid rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center;
+    }
+    .disc{
+      width:70%; height:70%; border-radius:50%; box-shadow:inset 0 1px 4px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.25);
+      transition:transform .12s ease;
+    }
+    .black{ background:#111; }
+    .white{ background:#fafafa; }
+    .hint::after{
+      content:""; width:18%; height:18%; border-radius:50%; background:rgba(255,255,255,.55);
+      box-shadow:0 0 0 2px rgba(0,0,0,.2) inset;
+    }
+    .panel{display:flex; gap:10px; align-items:center; margin:12px 0;}
+    .badge{padding:6px 10px; border-radius:999px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.12); font-size:14px;}
+    .turn{font-weight:bold}
+    button{appearance:none; border:none; background:#111; color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; cursor:pointer;}
+    button:hover{opacity:.9}
+    .footer{font-size:12px; color:#555; margin:6px 0 16px;}
   </style>
 </head>
 <body>
-  <h1>クリックゲーム</h1>
-  <button id="clickBtn">クリック！</button>
-  <div id="score">スコア: 0</div>
+  <h1>2人用オセロ作ったよん</h1>
+  <div class="panel">
+    <span class="badge">手番: <span id="turn" class="turn">●黒</span></span>
+    <span class="badge">黒: <span id="blackCount">2</span></span>
+    <span class="badge">白: <span id="whiteCount">2</span></span>
+    <button id="resetBtn">リセット</button>
+  </div>
+  <div class="info" id="message">合法手に●印（薄い点）を表示します。置ける場所をタップ/クリック。</div>
 
-  <script>
-    let score = 0;
-    const btn = document.getElementById('clickBtn');
-    const scoreDisplay = document.getElementById('score');
+  <div id="board" class="board" aria-label="オセロ盤"></div>
 
-    function addScore() {
-      score++;
-      scoreDisplay.textContent = `スコア: ${score}`;
+  <div class="footer">同じ端末で2人対戦。パスが必要な場合は自動で処理します。</div>
+
+<script>
+(() => {
+  const SIZE = 8;
+  const EMPTY = '';
+  const BLACK = 'B';
+  const WHITE = 'W';
+  const DIRS = [
+    [-1,-1],[-1,0],[-1,1],
+    [0,-1],        [0,1],
+    [1,-1], [1,0], [1,1]
+  ];
+
+  const boardEl = document.getElementById('board');
+  const turnEl = document.getElementById('turn');
+  const msgEl = document.getElementById('message');
+  const bcEl = document.getElementById('blackCount');
+  const wcEl = document.getElementById('whiteCount');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let board = Array.from({length:SIZE}, () => Array(SIZE).fill(EMPTY));
+  let current = BLACK;
+
+  function init() {
+    board.forEach(row => row.fill(EMPTY));
+    // 初期配置
+    board[3][3] = WHITE; board[3][4] = BLACK;
+    board[4][3] = BLACK; board[4][4] = WHITE;
+    current = BLACK;
+    render();
+    updateStatus();
+  }
+
+  function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+
+  function opposite(p){ return p===BLACK ? WHITE : BLACK; }
+
+  function validFlips(r,c,player){
+    if (board[r][c] !== EMPTY) return [];
+    const opp = opposite(player);
+    let flips = [];
+    for (const [dr,dc] of DIRS){
+      let rr=r+dr, cc=c+dc, line=[];
+      while(inBounds(rr,cc) && board[rr][cc]===opp){
+        line.push([rr,cc]); rr+=dr; cc+=dc;
+      }
+      if (line.length && inBounds(rr,cc) && board[rr][cc]===player){
+        flips = flips.concat(line);
+      }
     }
+    return flips;
+  }
 
-    // PC用（クリック）
-    btn.addEventListener('click', addScore);
+  function getValidMoves(player){
+    const moves=[];
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const f = validFlips(r,c,player);
+        if (f.length) moves.push({r,c,flips:f});
+      }
+    }
+    return moves;
+  }
 
-    // スマホ用（タッチ）
-    btn.addEventListener('touchstart', function(e) {
-      e.preventDefault(); // スクロール防止
-      addScore();
-    });
-  </script>
+  function place(r,c,player,flips){
+    board[r][c] = player;
+    for (const [rr,cc] of flips){ board[rr][cc] = player; }
+  }
+
+  function handleMove(r,c){
+    const flips = validFlips(r,c,current);
+    if (!flips.length) return; // 非合法手は無視
+    place(r,c,current,flips);
+    // 手番交代
+    current = opposite(current);
+    const oppMoves = getValidMoves(current);
+    const myMoves  = getValidMoves(opposite(current));
+
+    if (!oppMoves.length && !myMoves.length){
+      // 終局
+      render();
+      updateStatus();
+      const {B,W} = count();
+      let winner = (B>W) ? '黒の勝ち！' : (W>B) ? '白の勝ち！' : '引き分け！';
+      msgEl.textContent = `ゲーム終了：黒 ${B} - 白 ${W}　${winner}`;
+      return;
+    }
+    if (!oppMoves.length){
+      // 相手パス
+      current = opposite(current); // 自分の手番に戻す
+      msgEl.textContent = '相手は置ける場所がないため「パス」です。あなたの手番が続きます。';
+    }else{
+      msgEl.textContent = '置ける場所をタップ/クリック。';
+    }
+    render();
+    updateStatus();
+  }
+
+  function count(){
+    let B=0,W=0;
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        if (board[r][c]===BLACK) B++;
+        else if (board[r][c]===WHITE) W++;
+      }
+    }
+    return {B,W};
+  }
+
+  function updateStatus(){
+    const {B,W} = count();
+    bcEl.textContent = B;
+    wcEl.textContent = W;
+    turnEl.textContent = (current===BLACK?'●黒':'○白');
+  }
+
+  function render(){
+    // 盤面DOMを再構築（シンプル優先）
+    boardEl.innerHTML = '';
+    const moves = getValidMoves(current);
+    const hintSet = new Set(moves.map(m => `${m.r},${m.c}`));
+
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        // ヒント表示
+        if (board[r][c]===EMPTY && hintSet.has(`${r},${c}`)) cell.classList.add('hint');
+
+        // 石
+        if (board[r][c]!==EMPTY){
+          const d = document.createElement('div');
+          d.className = 'disc ' + (board[r][c]===BLACK?'black':'white');
+          cell.appendChild(d);
+        }
+
+        // クリック/タッチ（Pointerでまとめる）
+        cell.addEventListener('pointerdown', () => handleMove(r,c), {passive:true});
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  resetBtn.addEventListener('click', init);
+  init();
+})();
+</script>
 </body>
 </html>
